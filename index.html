@@ -1,138 +1,162 @@
-<script>
-  // Paste your latest Google Apps Script Web App URL (/exec) below so every device connects automatically
-  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxtw1HcjN0qgj3iHiXMwOG3MGI2DirOIHI5wkdONbpH2KLaXyuHB4jgWNUUrdEQsu3t/exec";
-
-  const DEFAULT_DATA = {
-    pin: "1234",
-    dailyStudioTarget: 8000,
-    techs: [
-      { id: 1, name: "Peter (Owner / Master)", rate: 50, specialty: "Nails & Locs" },
-      { id: 2, name: "Tech 1 (Nail Artist)", rate: 35, specialty: "Gel & Acrylics" },
-      { id: 3, name: "Tech 2 (Loctician)", rate: 40, specialty: "Dreadlocks & Reties" }
-    ],
-    services: [
-      { id: 1, name: "Builder Gel Overlay", price: 1500 },
-      { id: 2, name: "Acrylic Sculpted Extensions", price: 2500 },
-      { id: 3, name: "Polygel Full Set", price: 2200 },
-      { id: 4, name: "Gel Polish Manicure (Roniki)", price: 800 },
-      { id: 5, name: "3D Moulding / Tier 3 Nail Art", price: 1000 },
-      { id: 6, name: "Dreadlocks Retie & Styling", price: 1200 },
-      { id: 7, name: "Sisterlocks Retie", price: 2500 },
-      { id: 8, name: "Loc Detox & Wash", price: 800 }
-    ],
-    logs: []
-  };
-
-  let state = JSON.parse(localStorage.getItem("zenesty_studio_v2")) || DEFAULT_DATA;
-  let scriptUrl = localStorage.getItem("zenesty_sheet_url") || DEFAULT_SCRIPT_URL;
-  let adminUnlocked = false;
-
-  function saveLocal() {
-    localStorage.setItem("zenesty_studio_v2", JSON.stringify(state));
-  }
-
-  function setSyncBadge(status, text) {
-    const el = document.getElementById("syncStatus");
-    el.className = "sync-pill " + status;
-    el.textContent = text;
-  }
-
-  async function syncFromCloud() {
-    if (!scriptUrl) {
-      setSyncBadge("offline", "Local Mode (No Sheet URL)");
-      return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenesty Beauty Studio — Live Operations & Commission Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #181b22;
+      --card-alt: #20242e;
+      --border: #2c313d;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --red: #ef4444;
     }
-    setSyncBadge("syncing", "Syncing...");
-    try {
-      const bustUrl = scriptUrl + (scriptUrl.includes("?") ? "&" : "?") + "_t=" + Date.now();
-      const res = await fetch(bustUrl, { cache: "no-store" });
-      const json = await res.json();
-      if (json.status === "ok" && json.data) {
-        state = json.data;
-        saveLocal();
-        renderAll();
-        setSyncBadge("", "Live • Google Sheets");
-      }
-    } catch (err) {
-      setSyncBadge("offline", "Offline (Cached)");
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 60px; }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-  }
 
-  async function pushToCloud(payload) {
-    saveLocal();
-    renderAll();
-    if (!scriptUrl) return;
-    setSyncBadge("syncing", "Saving to Sheet...");
-    try {
-      const res = await fetch(scriptUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (json.status === "ok" && json.data) {
-        state = json.data;
-        saveLocal();
-        renderAll();
-        setSyncBadge("", "Live • Google Sheets");
-      }
-    } catch (err) {
-      setSyncBadge("offline", "Sync Error (Saved Locally)");
+    .brand h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; color: #fff; }
+    .brand-sub { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+    .brand span.loc { font-size: 0.78rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+
+    .sync-pill {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.4);
     }
-  }
+    .sync-pill.offline { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: var(--red); }
+    .sync-pill.syncing { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: var(--blue); }
 
-  function saveSheetUrl() {
-    const url = document.getElementById("sheetUrlInput").value.trim();
-    if (!url.startsWith("https://script.google.com/")) {
-      alert("Please enter a valid Google Apps Script Web App URL.");
-      return;
+    .nav-tabs { display: flex; gap: 8px; }
+    .tab-btn {
+      background: var(--card-alt);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: 0.2s;
     }
-    scriptUrl = url;
-    localStorage.setItem("zenesty_sheet_url", url);
-    syncFromCloud();
-  }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  function getTodayStr() {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    return new Date(now - offset).toISOString().split("T")[0];
-  }
+    .container { max-width: 1100px; margin: 20px auto; padding: 0 16px; }
 
-  function setToday() {
-    document.getElementById("filterDate").value = getTodayStr();
-    renderAll();
-  }
-
-  function checkSunday(dateStr) {
-    const d = new Date(dateStr + "T00:00:00");
-    document.getElementById("sundayBanner").style.display = (d.getDay() === 0) ? "block" : "none";
-  }
-
-  function switchTab(tabId, btnEl) {
-    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById(tabId).classList.add("active");
-    if (btnEl) btnEl.classList.add("active");
-    renderAll();
-  }
-
-  function openAdmin() {
-    if (!adminUnlocked) {
-      const entered = prompt("Enter Admin PIN:");
-      if (entered !== String(state.pin)) {
-        alert("Incorrect PIN.");
-        return;
-      }
-      adminUnlocked = true;
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
     }
-    document.getElementById("sheetUrlInput").value = scriptUrl;
-    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById("admin-view").classList.add("active");
-    document.querySelectorAll(".tab-btn")[2].classList.add("active");
-  }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .stat-card .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    .stat-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .val-green { color: var(--green); }
+    .val-accent { color: var(--accent); }
+    .val-blue { color: var(--blue); }
 
-  async function runCommand() {
-    const raw = document.getElementById("adminCmdInput").value.trim();
-    const feedback = document.getElementById("cmdFeedback");
-    if (!raw) return;
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; }
+    @media (max-width: 820px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; margin-top: 12px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 11px 16px;
+      margin-top: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-sm { width: auto; padding: 6px 10px; font-size: 0.78rem; margin-top: 0; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--card-alt); }
+    .btn-danger { background: var(--red); }
+
+    .preview-box {
+      background: var(--card-alt);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 0.88rem;
+    }
+    .preview-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
+    .badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+    }
+    .badge-mpesa { color: var(--green); border-color: rgba(16,185,129,0.4); }
+    .badge-cash { color: var(--accent); border-color: rgba(217,119,6,0.4); }
+    .badge-bank { color: var(--blue); border-
