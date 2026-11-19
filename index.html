@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenesty Beauty Studio — Live Operations & Commission Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #181b22;
+      --card-alt: #20242e;
+      --border: #2c313d;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 60px; }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; color: #fff; }
+    .brand-sub { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+    .brand span.loc { font-size: 0.78rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+
+    .sync-pill {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .sync-pill.offline { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: var(--red); }
+    .sync-pill.syncing { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: var(--blue); }
+
+    .nav-tabs { display: flex; gap: 8px; }
+    .tab-btn {
+      background: var(--card-alt);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: 0.2s;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .container { max-width: 1100px; margin: 20px auto; padding: 0 16px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .stat-card .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    .stat-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .val-green { color: var(--green); }
+    .val-accent { color: var(--accent); }
+    .val-blue { color: var(--blue); }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; }
+    @media (max-width: 820px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; margin-top: 12px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 11px 16px;
+      margin-top: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-sm { width: auto; padding: 6px 10px; font-size: 0.78rem; margin-top: 0; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--card-alt); }
+    .btn-danger { background: var(--red); }
+
+    .preview-box {
+      background: var(--card-alt);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 0.88rem;
+    }
+    .preview-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
+    .badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+    }
+    .badge-mpesa { color: var(--green); border-color: rgba(16,185,129,0.4); }
+    .badge-cash { color: var(--accent); border-color: rgba(217,119,6,0.4); }
+    .badge-bank { color: var(--blue); border-color: rgba(59,130,246,0.4); }
+
+    .cmd-box {
+      background: #0b0d10;
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+    .cmd-input-row { display: flex; gap: 8px; margin-top: 8px; }
+    .cmd-input-row input { font-family: monospace; color: var(--green); }
+    .cmd-help { font-size: 0.78rem; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+    code { background: var(--card-alt); padding: 2px 5px; border-radius: 4px; color: #fbbf24; }
+
+    .sunday-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--red);
+      color: #fca5a5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>ZENESTY BEAUTY STUDIO</h1>
+    <div class="brand-sub">
+      <span class="loc">Rungiri • Commission Engine</span>
+      <span id="syncStatus" class="sync-pill offline">Local Mode</span>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('tech-view', this)">Tech Floor Log</button>
+    <button class="tab-btn" onclick="switchTab('payouts-view', this)">Tech Payouts</button>
+    <button class="tab-btn" onclick="openAdmin()">Admin Panel</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="sundayBanner" class="sunday-banner">
+    <strong>Sunday Studio Policy Reminder:</strong> Today is Sunday. Zenesty Beauty Studio is closed for regular bookings to protect rest & recharge time.
+  </div>
+
+  <!-- Date & Sync Bar -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <strong style="font-size:0.9rem;">Viewing Date:</strong>
+      <input type="date" id="filterDate" style="width:auto; display:inline-block; margin-left:8px; padding:6px 10px;" onchange="renderAll()" />
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-sm btn-outline" onclick="syncFromCloud()">↻ Sync Sheet</button>
+      <button class="btn btn-sm btn-outline" onclick="setToday()">Today</button>
+      <button class="btn btn-sm btn-outline" onclick="exportCSV()">Export CSV</button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Total Gross Sales</div>
+      <div class="value" id="statGross">KES 0</div>
+      <div class="sub" id="statCount">0 services logged</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Tech Commissions (30–50%)</div>
+      <div class="value val-accent" id="statTech">KES 0</div>
+      <div class="sub">Payable to staff</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Studio Net Retained</div>
+      <div class="value val-green" id="statStudio">KES 0</div>
+      <div class="sub" id="statTargetProgress">Expansion & operations</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Payment Breakdown</div>
+      <div class="value val-blue" style="font-size:1.05rem; margin-top:8px;" id="statChannels">M-Pesa: 0 | Cash: 0</div>
+      <div class="sub" id="statBank">Bank: KES 0</div>
+    </div>
+  </div>
+
+  <!-- TAB 1: TECH FLOOR LOG -->
+  <div id="tech-view" class="section active">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Log Completed Service</h2>
+        <form id="serviceForm" onsubmit="logService(event)">
+          <label>Technician Name</label>
+          <select id="techSelect" required onchange="updatePreview()"></select>
+
+          <label>Service Performed</label>
+          <select id="serviceSelect" required onchange="applyServicePrice()"></select>
+
+          <label>Client Name / Note (Optional)</label>
+          <input type="text" id="clientNote" placeholder="e.g., Walk-in / French Builder Gel" />
+
+          <label>Amount Charged (KES)</label>
+          <input type="number" id="amountInput" min="50" step="50" required oninput="updatePreview()" placeholder="1500" />
+
+          <label>Payment Method</label>
+          <select id="paymentMethod" required>
+            <option value="M-Pesa">M-Pesa</option>
+            <option value="Cash">Cash</option>
+            <option value="Bank">Bank Transfer</option>
+          </select>
+
+          <div class="preview-box" id="commissionPreview">
+            <div class="preview-row"><span>Commission Rate:</span> <strong id="prevRate">0%</strong></div>
+            <div class="preview-row"><span>Tech Earns:</span> <strong class="val-accent" id="prevTech">KES 0</strong></div>
+            <div class="preview-row"><span>Studio Keeps:</span> <strong class="val-green" id="prevStudio">KES 0</strong></div>
+          </div>
+
+          <button type="submit" id="submitLogBtn" class="btn">+ Record Service</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Completed Services Log</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Tech</th>
+                <th>Service</th>
+                <th>Total</th>
+                <th>Tech Cut</th>
+                <th>Mode</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: TECH PAYOUTS SUMMARY -->
+  <div id="payouts-view" class="section">
+    <div class="card">
+      <h2>Daily Staff Commission Breakdown</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Technician</th>
+              <th>Role / Specialty</th>
+              <th>Rate</th>
+              <th>Jobs Done</th>
+              <th>Gross Generated</th>
+              <th>Tech Commission Payout</th>
+              <th>Studio Net</th>
+            </tr>
+          </thead>
+          <tbody id="payoutTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ADMIN COMMAND PANEL -->
+  <div id="admin-view" class="section">
+    <!-- Google Sheets Connection Card -->
+    <div class="card">
+      <h2>Google Sheets Cloud Sync Connection</h2>
+      <p style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;">
+        Paste your Google Apps Script Web App URL below so every phone in the salon syncs live to your Google Sheet.
+      </p>
+      <div style="display:flex; gap:8px;">
+        <input type="url" id="sheetUrlInput" placeholder="https://script.google.com/macros/s/...../exec" />
+        <button class="btn btn-sm" onclick="saveSheetUrl()">Connect & Sync</button>
+      </div>
+    </div>
+
+    <!-- Quick Command Box -->
+    <div class="cmd-box">
+      <strong style="color:#fff;">Admin Command Line (Instant Automation)</strong>
+      <div class="cmd-input-row">
+        <input type="text" id="adminCmdInput" placeholder="Type command e.g. ADD TECH Mary 40" onkeydown="if(event.key==='Enter') runCommand()" />
+        <button class="btn btn-sm" onclick="runCommand()">Execute</button>
+      </div>
+      <div class="cmd-help">
+        Supported Commands:<br>
+        • <code>ADD TECH [Name] [Rate 30-50]</code> — e.g. <code>ADD TECH Grace 35</code><br>
+        • <code>SET RATE [Name] [Rate 30-50]</code> — e.g. <code>SET RATE Grace 45</code><br>
+        • <code>REMOVE TECH [Name]</code> — e.g. <code>REMOVE TECH Grace</code><br>
+        • <code>ADD SERVICE [Service Name] [Price]</code> — e.g. <code>ADD SERVICE Acrylic Sculpted 2500</code><br>
+        • <code>TARGET [Daily Studio Net KES]</code> — e.g. <code>TARGET 10000</code><br>
+        • <code>PIN [New 4-Digit PIN]</code> — e.g. <code>PIN 2580</code>
+      </div>
+      <div id="cmdFeedback" style="margin-top:8px; font-size:0.85rem; color:var(--green);"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Technicians & Commission Rates (30%–50%)</h2>
+        <form onsubmit="addTechForm(event)" style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="text" id="newTechName" placeholder="Tech Name" required />
+          <input type="number" id="newTechRate" min="30" max="50" value="35" required style="max-width:95px;" title="Commission % (30-50)" />
+          <button type="submit" class="btn btn-sm">Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Commission %</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminTechBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Studio Service Menu</h2>
+        <form onsubmit="addServiceForm(event)" style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="text" id="newServiceName" placeholder="Service Name" required />
+          <input type="number" id="newServicePrice" min="100" step="50" placeholder="KES" required style="max-width:110px;" />
+          <button type="submit" class="btn btn-sm">Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Default Price</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminServiceBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // OPTIONAL: Paste your Google Apps Script Web App URL inside the quotes below so every device connects automatically!
+  const DEFAULT_SCRIPT_URL = "";
+
+  const DEFAULT_DATA = {
+    pin: "1234",
+    dailyStudioTarget: 8000,
+    techs: [
+      { id: 1, name: "Peter (Owner / Master)", rate: 50, specialty: "Nails & Locs" },
+      { id: 2, name: "Tech 1 (Nail Artist)", rate: 35, specialty: "Gel & Acrylics" },
+      { id: 3, name: "Tech 2 (Loctician)", rate: 40, specialty: "Dreadlocks & Reties" }
+    ],
+    services: [
+      { id: 1, name: "Builder Gel Overlay", price: 1500 },
+      { id: 2, name: "Acrylic Sculpted Extensions", price: 2500 },
+      { id: 3, name: "Polygel Full Set", price: 2200 },
+      { id: 4, name: "Gel Polish Manicure (Roniki)", price: 800 },
+      { id: 5, name: "3D Moulding / Tier 3 Nail Art", price: 1000 },
+      { id: 6, name: "Dreadlocks Retie & Styling", price: 1200 },
+      { id: 7, name: "Sisterlocks Retie", price: 2500 },
+      { id: 8, name: "Loc Detox & Wash", price: 800 }
+    ],
+    logs: []
+  };
+
+  let state = JSON.parse(localStorage.getItem("zenesty_studio_v2")) || DEFAULT_DATA;
+  let scriptUrl = localStorage.getItem("zenesty_sheet_url") || DEFAULT_SCRIPT_URL;
+  let adminUnlocked = false;
+
+  function saveLocal() {
+    localStorage.setItem("zenesty_studio_v2", JSON.stringify(state));
+  }
+
+  function setSyncBadge(status, text) {
+    const el = document.getElementById("syncStatus");
+    el.className = "sync-pill " + status;
+    el.textContent = text;
+  }
+
+  async function syncFromCloud() {
+    if (!scriptUrl) {
+      setSyncBadge("offline", "Local Mode (No Sheet URL)");
+      return;
+    }
+    setSyncBadge("syncing", "Syncing...");
+    try {
+      const res = await fetch(scriptUrl);
+      const json = await res.json();
+      if (json.status === "ok" && json.data) {
+        state = json.data;
+        saveLocal();
+        renderAll();
+        setSyncBadge("", "Live • Google Sheets");
+      }
+    } catch (err) {
+      setSyncBadge("offline", "Offline (Cached)");
+    }
+  }
+
+  async function pushToCloud(payload) {
+    saveLocal();
+    renderAll();
+    if (!scriptUrl) return;
+    setSyncBadge("syncing", "Saving to Sheet...");
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.status === "ok" && json.data) {
+        state = json.data;
+        saveLocal();
+        renderAll();
+        setSyncBadge("", "Live • Google Sheets");
+      }
+    } catch (err) {
+      setSyncBadge("offline", "Sync Error (Saved Locally)");
+    }
+  }
+
+  function saveSheetUrl() {
+    const url = document.getElementById("sheetUrlInput").value.trim();
+    if (!url.startsWith("https://script.google.com/")) {
+      alert("Please enter a valid Google Apps Script Web App URL.");
+      return;
+    }
+    scriptUrl = url;
+    localStorage.setItem("zenesty_sheet_url", url);
+    syncFromCloud();
+  }
+
+  function getTodayStr() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now - offset).toISOString().split("T")[0];
+  }
+
+  function setToday() {
+    document.getElementById("filterDate").value = getTodayStr();
+    renderAll();
+  }
+
+  function checkSunday(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    document.getElementById("sundayBanner").style.display = (d.getDay() === 0) ? "block" : "none";
+  }
+
+  function switchTab(tabId, btnEl) {
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(tabId).classList.add("active");
+    if (btnEl) btnEl.classList.add("active");
+  }
+
+  function openAdmin() {
+    if (!adminUnlocked) {
+      const entered = prompt("Enter Admin PIN (default is 1234):");
+      if (entered !== state.pin) {
+        alert("Incorrect PIN.");
+        return;
+      }
+      adminUnlocked = true;
+    }
+    document.getElementById("sheetUrlInput").value = scriptUrl;
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("admin-view").classList.add("active");
+    document.querySelectorAll(".tab-btn")[2].classList.add("active");
+  }
+
+  async function runCommand() {
+    const raw = document.getElementById("adminCmdInput").value.trim();
+    const feedback = document.getElementById("cmdFeedback");
+    if (!raw) return;
+
+    const parts = raw.split(/\s+/);
+    const cmd = parts[0].toUpperCase();
+    const sub = (parts[1] || "").toUpperCase();
+
+    if (cmd === "ADD" && sub === "TECH" && parts.length >= 4) {
+      const rate = parseInt(parts[parts.length - 1], 10);
+      const name = parts.slice(2, parts.length - 1).join(" ");
+      if (isNaN(rate) || rate < 30 || rate > 50) {
+        feedback.style.color = "var(--red)";
+        feedback.textContent = "Error: Commission rate must be between 30 and 50.";
+        return;
+      }
+      const newTech = { id: Date.now(), name, rate, specialty: "Studio Tech" };
+      state.techs.push(newTech);
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Added technician "${name}" at ${rate}% commission.`;
+      await pushToCloud({ action: "ADD_TECH", tech: newTech });
+    }
+    else if (cmd === "SET" && sub === "RATE" && parts.length >= 4) {
+      const rate = parseInt(parts[parts.length - 1], 10);
+      const nameQuery = parts.slice(2, parts.length - 1).join(" ").toLowerCase();
+      if (isNaN(rate) || rate < 30 || rate > 50) {
+        feedback.style.color = "var(--red)";
+        feedback.textContent = "Error: Commission rate must be between 30 and 50.";
+        return;
+      }
+      const tech = state.techs.find(t => t.name.toLowerCase().includes(nameQuery));
+      if (!tech) {
+        feedback.style.color = "var(--red)";
+        feedback.textContent = `Technician "${nameQuery}" not found.`;
+        return;
+      }
+      tech.rate = rate;
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Updated ${tech.name} commission rate to ${rate}%.`;
+      await pushToCloud({ action: "UPDATE_TECH_RATE", id: tech.id, rate });
+    }
+    else if (cmd === "REMOVE" && sub === "TECH" && parts.length >= 3) {
+      const nameQuery = parts.slice(2).join(" ").toLowerCase();
+      const idx = state.techs.findIndex(t => t.name.toLowerCase().includes(nameQuery));
+      if (idx === -1) {
+        feedback.style.color = "var(--red)";
+        feedback.textContent = `Technician "${nameQuery}" not found.`;
+        return;
+      }
+      const removed = state.techs.splice(idx, 1)[0];
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Removed technician "${removed.name}".`;
+      await pushToCloud({ action: "REMOVE_TECH", id: removed.id });
+    }
+    else if (cmd === "ADD" && sub === "SERVICE" && parts.length >= 4) {
+      const price = parseInt(parts[parts.length - 1], 10);
+      const name = parts.slice(2, parts.length - 1).join(" ");
+      if (isNaN(price) || price <= 0) {
+        feedback.style.color = "var(--red)";
+        feedback.textContent = "Error: Invalid service price.";
+        return;
+      }
+      const newSvc = { id: Date.now(), name, price };
+      state.services.push(newSvc);
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Added service "${name}" at KES ${price.toLocaleString()}.`;
+      await pushToCloud({ action: "ADD_SERVICE", service: newSvc });
+    }
+    else if (cmd === "TARGET" && parts.length === 2) {
+      const target = parseInt(parts[1], 10);
+      if (isNaN(target) || target < 0) return;
+      state.dailyStudioTarget = target;
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Daily Studio Net Target set to KES ${target.toLocaleString()}.`;
+      await pushToCloud({ action: "SET_CONFIG", key: "dailyStudioTarget", value: target });
+    }
+    else if (cmd === "PIN" && parts.length === 2 && /^\d{4}$/.test(parts[1])) {
+      state.pin = parts[1];
+      feedback.style.color = "var(--green)";
+      feedback.textContent = `Admin PIN updated successfully.`;
+      await pushToCloud({ action: "SET_CONFIG", key: "pin", value: parts[1] });
+    }
+    else {
+      feedback.style.color = "var(--red)";
+      feedback.textContent = "Unrecognized command. Check syntax guide below.";
+      return;
+    }
+
+    document.getElementById("adminCmdInput").value = "";
+  }
+
+  function applyServicePrice() {
+    const svcId = parseInt(document.getElementById("serviceSelect").value, 10);
+    const svc = state.services.find(s => s.id === svcId);
+    if (svc) {
+      document.getElementById("amountInput").value = svc.price;
+      updatePreview();
+    }
+  }
+
+  function updatePreview() {
+    const techId = parseInt(document.getElementById("techSelect").value, 10);
+    const amount = parseFloat(document.getElementById("amountInput").value) || 0;
+    const tech = state.techs.find(t => t.id === techId);
+    const rate = tech ? tech.rate : 0;
+
+    const techCut = Math.round(amount * (rate / 100));
+    const studioCut = amount - techCut;
+
+    document.getElementById("prevRate").textContent = `${rate}%`;
+    document.getElementById("prevTech").textContent = `KES ${techCut.toLocaleString()}`;
+    document.getElementById("prevStudio").textContent = `KES ${studioCut.toLocaleString()}`;
+  }
+
+  async function logService(e) {
+    e.preventDefault();
+    const techId = parseInt(document.getElementById("techSelect").value, 10);
+    const svcId = parseInt(document.getElementById("serviceSelect").value, 10);
+    const amount = parseFloat(document.getElementById("amountInput").value);
+    const method = document.getElementById("paymentMethod").value;
+    const note = document.getElementById("clientNote").value.trim();
+    const selectedDate = document.getElementById("filterDate").value || getTodayStr();
+
+    const tech = state.techs.find(t => t.id === techId);
+    const svc = state.services.find(s => s.id === svcId);
+    if (!tech || !svc) return;
+
+    const rate = tech.rate;
+    const techCut = Math.round(amount * (rate / 100));
+    const studioCut = amount - techCut;
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    const newLog = {
+      id: Date.now(),
+      date: selectedDate,
+      time: timeStr,
+      techId: tech.id,
+      techName: tech.name,
+      rate,
+      serviceName: svc.name,
+      note,
+      amount,
+      techCut,
+      studioCut,
+      method
+    };
+
+    state.logs.unshift(newLog);
+    document.getElementById("clientNote").value = "";
+    await pushToCloud({ action: "ADD_LOG", log: newLog });
+  }
+
+  async function deleteLog(id) {
+    if (!confirm("Delete this entry?")) return;
+    state.logs = state.logs.filter(l => l.id !== id);
+    await pushToCloud({ action: "DELETE_LOG", id });
+  }
+
+  async function addTechForm(e) {
+    e.preventDefault();
+    const name = document.getElementById("newTechName").value.trim();
+    const rate = parseInt(document.getElementById("newTechRate").value, 10);
+    if (!name || rate < 30 || rate > 50) return;
+    const newTech = { id: Date.now(), name, rate, specialty: "Studio Staff" };
+    state.techs.push(newTech);
+    document.getElementById("newTechName").value = "";
+    await pushToCloud({ action: "ADD_TECH", tech: newTech });
+  }
+
+  async function updateTechRateDirect(id, newRate) {
+    const r = parseInt(newRate, 10);
+    if (isNaN(r) || r < 30 || r > 50) {
+      alert("Commission rate must be between 30% and 50%.");
+      renderAll();
+      return;
+    }
+    const tech = state.techs.find(t => t.id === id);
+    if (tech) {
+      tech.rate = r;
+      await pushToCloud({ action: "UPDATE_TECH_RATE", id, rate: r });
+    }
+  }
+
+  async function removeTech(id) {
+    if (!confirm("Remove this technician?")) return;
+    state.techs = state.techs.filter(t => t.id !== id);
+    await pushToCloud({ action: "REMOVE_TECH", id });
+  }
+
+  async function addServiceForm(e) {
+    e.preventDefault();
+    const name = document.getElementById("newServiceName").value.trim();
+    const price = parseInt(document.getElementById("newServicePrice").value, 10);
+    if (!name || price <= 0) return;
+    const newSvc = { id: Date.now(), name, price };
+    state.services.push(newSvc);
+    document.getElementById("newServiceName").value = "";
+    document.getElementById("newServicePrice").value = "";
+    await pushToCloud({ action: "ADD_SERVICE", service: newSvc });
+  }
+
+  async function removeService(id) {
+    state.services = state.services.filter(s => s.id !== id);
+    await pushToCloud({ action: "REMOVE_SERVICE", id });
+  }
+
+  function renderAll() {
+    const selectedDate = document.getElementById("filterDate").value || getTodayStr();
+    checkSunday(selectedDate);
+
+    const techSelect = document.getElementById("techSelect");
+    const prevTechVal = techSelect.value;
+    techSelect.innerHTML = state.techs.map(t => `<option value="${t.id}">${t.name} (${t.rate}%)</option>`).join("");
+    if (prevTechVal) techSelect.value = prevTechVal;
+
+    const svcSelect = document.getElementById("serviceSelect");
+    const prevSvcVal = svcSelect.value;
+    svcSelect.innerHTML = state.services.map(s => `<option value="${s.id}">${s.name} — KES ${s.price}</option>`).join("");
+    if (prevSvcVal) svcSelect.value = prevSvcVal;
+    if (!document.getElementById("amountInput").value) applyServicePrice();
+    updatePreview();
+
+    const dayLogs = state.logs.filter(l => l.date === selectedDate);
+
+    let gross = 0, techTotal = 0, studioTotal = 0, mpesa = 0, cash = 0, bank = 0;
+    dayLogs.forEach(l => {
+      gross += l.amount;
+      techTotal += l.techCut;
+      studioTotal += l.studioCut;
+      if (l.method === "M-Pesa") mpesa += l.amount;
+      else if (l.method === "Cash") cash += l.amount;
+      else bank += l.amount;
+    });
+
+    document.getElementById("statGross").textContent = `KES ${gross.toLocaleString()}`;
+    document.getElementById("statCount").textContent = `${dayLogs.length} service(s) logged`;
+    document.getElementById("statTech").textContent = `KES ${techTotal.toLocaleString()}`;
+    document.getElementById("statStudio").textContent = `KES ${studioTotal.toLocaleString()}`;
+    const pct = state.dailyStudioTarget > 0 ? Math.round((studioTotal / state.dailyStudioTarget) * 100) : 0;
+    document.getElementById("statTargetProgress").textContent = `${pct}% of KES ${state.dailyStudioTarget.toLocaleString()} daily target`;
+    document.getElementById("statChannels").textContent = `M-Pesa: ${mpesa.toLocaleString()} | Cash: ${cash.toLocaleString()}`;
+    document.getElementById("statBank").textContent = `Bank Transfer: KES ${bank.toLocaleString()}`;
+
+    const tbody = document.getElementById("logsTableBody");
+    tbody.innerHTML = dayLogs.length ? dayLogs.map(l => {
+      const badgeClass = l.method === "M-Pesa" ? "badge-mpesa" : (l.method === "Cash" ? "badge-cash" : "badge-bank");
+      return `
+        <tr>
+          <td>${l.time}</td>
+          <td><strong>${l.techName}</strong><br><span style="font-size:0.75rem;color:var(--muted);">${l.rate}% rate</span></td>
+          <td>${l.serviceName}${l.note ? `<br><span style="font-size:0.75rem;color:var(--muted);">${l.note}</span>` : ""}</td>
+          <td><strong>${l.amount.toLocaleString()}</strong></td>
+          <td class="val-accent"><strong>${l.techCut.toLocaleString()}</strong></td>
+          <td><span class="badge ${badgeClass}">${l.method}</span></td>
+          <td><button class="btn btn-sm btn-outline" onclick="deleteLog(${l.id})">✕</button></td>
+        </tr>
+      `;
+    }).join("") : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No services logged for ${selectedDate}.</td></tr>`;
+
+    const payoutBody = document.getElementById("payoutTableBody");
+    payoutBody.innerHTML = state.techs.map(t => {
+      const tLogs = dayLogs.filter(l => l.techId === t.id || l.techName === t.name);
+      const tGross = tLogs.reduce((sum, l) => sum + l.amount, 0);
+      const tCut = tLogs.reduce((sum, l) => sum + l.techCut, 0);
+      const tStudio = tLogs.reduce((sum, l) => sum + l.studioCut, 0);
+      return `
+        <tr>
+          <td><strong>${t.name}</strong></td>
+          <td>${t.specialty || "Studio Tech"}</td>
+          <td><span class="badge">${t.rate}%</span></td>
+          <td>${tLogs.length}</td>
+          <td>KES ${tGross.toLocaleString()}</td>
+          <td class="val-accent"><strong>KES ${tCut.toLocaleString()}</strong></td>
+          <td class="val-green">KES ${tStudio.toLocaleString()}</td>
+        </tr>
+      `;
+    }).join("");
+
+    document.getElementById("adminTechBody").innerHTML = state.techs.map(t => `
+      <tr>
+        <td>${t.name}</td>
+        <td>
+          <input type="number" min="30" max="50" value="${t.rate}" style="width:75px; padding:5px;" onchange="updateTechRateDirect(${t.id}, this.value)" /> %
+        </td>
+        <td><button class="btn btn-sm btn-danger" onclick="removeTech(${t.id})">Remove</button></td>
+      </tr>
+    `).join("");
+
+    document.getElementById("adminServiceBody").innerHTML = state.services.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td>KES ${s.price.toLocaleString()}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removeService(${s.id})">Remove</button></td>
+      </tr>
+    `).join("");
+  }
+
+  function exportCSV() {
+    const selectedDate = document.getElementById("filterDate").value || getTodayStr();
+    const dayLogs = state.logs.filter(l => l.date === selectedDate);
+    if (!dayLogs.length) return alert("No records to export for this date.");
+
+    const headers = ["Date", "Time", "Technician", "Rate%", "Service", "Note", "Gross_KES", "Tech_Payout_KES", "Studio_Net_KES", "Payment_Method"];
+    const rows = dayLogs.map(l => [l.date, l.time, `"${l.techName}"`, l.rate, `"${l.serviceName}"`, `"${l.note}"`, l.amount, l.techCut, l.studioCut, l.method]);
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Zenesty_Beauty_Studio_${selectedDate}.csv`;
+    a.click();
+  }
+
+  // Boot
+  document.getElementById("filterDate").value = getTodayStr();
+  renderAll();
+  if (scriptUrl) {
+    syncFromCloud();
+    // Auto-refresh every 30 seconds so multiple salon phones stay in sync
+    setInterval(syncFromCloud, 30000);
+  }
+</script>
+</body>
+</html>
